@@ -54,6 +54,8 @@ recovery_attempts = 0
 post_lock_recovery = False
 base_entry_price = None  # 🔑 This tracks the fixed starting price for all hedge legs
 hedged_tickets = set()
+# Map recovery sniper ticket -> hedge ticket for grouped management
+recovery_hedge_pairs = {}
 
 # === CONFIGURATION ===
 LOT_SIZE = 0.01
@@ -866,7 +868,7 @@ def calculate_cumulative_hedge_lot(entry_sequence):
 def reset_state():
     global entry_sequence, locked_active, locked_loss, post_lock_recovery, recovery_attempts
     global base_entry_price, current_leg, post_lock_recovery_pnl
-    global recovery_snipers_fired, recovery_hedge_count
+    global recovery_snipers_fired, recovery_hedge_count, recovery_hedge_pairs
 
     post_lock_recovery_pnl = 0.0
     entry_sequence = []
@@ -878,6 +880,7 @@ def reset_state():
     current_leg = 0
     recovery_snipers_fired = 0
     recovery_hedge_count = 0
+    recovery_hedge_pairs = {}
 
 
 def log_hedge_debug(price_now, expected_price, base_entry_price, current_leg):
@@ -924,7 +927,7 @@ def main():
     global current_leg, entry_sequence, hedge_mode, last_price_snapshot, last_entry_side, price_left_zone
     global last_sniper_time, recovery_snipers_fired, locked_active, locked_loss
     global recovery_attempts, post_lock_recovery, recovery_hedge_count, hedge_price_levels, base_entry_price
-    global recovery_hedged_tickets, hedged_tickets
+    global recovery_hedge_pairs, hedged_tickets
 
     initialize()
     init_csv_file()
@@ -934,7 +937,7 @@ def main():
     recovery_hedge_count = 0
     hedge_price_levels = []
     base_entry_price = None
-    recovery_hedged_tickets = set()
+    recovery_hedge_pairs = {}
     hedged_tickets = set()
     post_lock_recovery_pnl = 0.0
 
@@ -1028,9 +1031,9 @@ def main():
             hedges = [p for p in positions if p.comment == "RECOVERY_HEDGE"]
 
             for sniper in snipers:
-                # If sniper has hedge
-                if sniper.ticket in recovery_hedged_tickets:
-                    hedge = next((h for h in hedges if h.volume >= sniper.volume and h.type != sniper.type), None)
+                if sniper.ticket in recovery_hedge_pairs:
+                    hedge_ticket = recovery_hedge_pairs[sniper.ticket]
+                    hedge = next((h for h in hedges if h.ticket == hedge_ticket), None)
                     if hedge:
                         combined_pnl = sniper.profit + hedge.profit
                         if combined_pnl >= PROFIT_SCALP_TARGET:
@@ -1038,6 +1041,14 @@ def main():
                             close_position(hedge, comment="[GROUP TP - HEDGE]")
                             logging.info(f"[GROUP TP] Sniper+Hedge profit: ${combined_pnl:.2f}")
                             locked_loss -= combined_pnl
+                            del recovery_hedge_pairs[sniper.ticket]
+                    else:
+                        # Hedge missing, treat sniper individually
+                        if sniper.profit >= PROFIT_SCALP_TARGET:
+                            close_position(sniper, comment="[SNIPER TP]")
+                            logging.info(f"[SNIPER TP] +${sniper.profit:.2f}")
+                            locked_loss -= sniper.profit
+                            recovery_hedge_pairs.pop(sniper.ticket, None)
                 else:
                     if sniper.profit >= PROFIT_SCALP_TARGET:
                         close_position(sniper, comment="[SNIPER TP]")
@@ -1059,7 +1070,7 @@ def main():
                 continue
 
             for p in snipers:
-                if p.ticket in recovery_hedged_tickets:
+                if p.ticket in recovery_hedge_pairs:
                     continue
                 loss_pips = (p.price_open - tick.bid) * 100 if p.type == mt5.POSITION_TYPE_BUY else (tick.ask - p.price_open) * 100
                 if loss_pips >= HEDGE_TRIGGER_PIPS:
@@ -1070,7 +1081,7 @@ def main():
                     if result.retcode == mt5.TRADE_RETCODE_DONE:
                         logging.warning(f"[RECOVERY HEDGE] {hedge_side} {lot:.2f} @ {hedge_price:.2f}")
                         entry_sequence.append((hedge_price, hedge_side, lot, "RECOVERY_HEDGE"))
-                        recovery_hedged_tickets.add(p.ticket)
+                        recovery_hedge_pairs[p.ticket] = result.order
                         recovery_hedge_count += 1
                         current_leg += 1
 
