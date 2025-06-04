@@ -62,6 +62,7 @@ LOT_SIZE = 0.01
 SPREAD_LIMIT = 1.5
 PROFIT_SCALP_TARGET = 0.25
 HEDGE_TRIGGER_PIPS = 50  # <--- 🔥 Add this
+MAX_HEDGE_POSITIONS = 3  # allow up to 3 open hedge legs
 post_lock_recovery_pnl = 0.0
 
 # === LOGGING ===
@@ -979,8 +980,16 @@ def main():
         active_range = next((r for r in locked_ranges if r['start'] <= time_now <= r['end']), None)
         in_active_range = bool(active_range and active_range['bottom'] <= price <= active_range['top'])
 
-        # ✅ Auto-lock after 3 entries
-        if not locked_active and len(entry_sequence) == 3:
+        # close and reset if too many hedge legs would be active
+        if len(entry_sequence) > MAX_HEDGE_POSITIONS:
+            logging.warning("[MAX HEDGE] Limit reached -> resetting")
+            log_trade(entry_sequence)
+            close_all_positions()
+            reset_state()
+            continue
+
+        # ✅ Auto-lock once hedge limit hit
+        if not locked_active and len(entry_sequence) >= MAX_HEDGE_POSITIONS:
             buy_lots = sum(p.volume for p in positions if p.type == mt5.POSITION_TYPE_BUY)
             sell_lots = sum(p.volume for p in positions if p.type == mt5.POSITION_TYPE_SELL)
             diff = round(abs(buy_lots - sell_lots), 2)
