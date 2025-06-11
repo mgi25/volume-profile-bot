@@ -107,4 +107,5 @@ def live_lux_plot():
         plt.pause(1)
 
 # === Run It ===
-live_lux_plot()
+if __name__ == '__main__':
+    live_lux_plot()
