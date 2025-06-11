@@ -18,6 +18,11 @@ sys.stdout.reconfigure(encoding='utf-8')
 LOGIN = 204215535
 PASSWORD = "Mgi@2005"
 SERVER = "Exness-MT5Trial7"
+
+# Allow overriding credentials via environment variables
+LOGIN = int(os.environ.get("MT5_LOGIN", LOGIN))
+PASSWORD = os.environ.get("MT5_PASSWORD", PASSWORD)
+SERVER = os.environ.get("MT5_SERVER", SERVER)
 SYMBOL = "XAUUSDm"
 TIMEFRAME = mt5.TIMEFRAME_M1
 
