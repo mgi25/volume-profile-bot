@@ -106,4 +106,5 @@ def live_lux_plot():
         plt.tight_layout()
         plt.pause(1)
 
+# === Run It ===
 live_lux_plot()
