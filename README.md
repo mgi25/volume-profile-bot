@@ -69,3 +69,22 @@ This code is for educational purposes. Trading involves risk and no guarantee
 of profitability is provided. Ensure that you understand and test the strategy
 before using it with a live account.
 
+```
+## Contents
+
+- `bot.py` - Main trading bot implementation.
+- `range.py` - Example script for range-based analysis.
+
+This repository contains a trading bot that relies on the MetaTrader5 (MT5) Python API.
+
+## Environment Variables
+
+Before running `bot.py`, set the following environment variables so the bot can
+authenticate with your MT5 account:
+
+- `MT5_LOGIN` – numeric login ID for the MT5 account
+- `MT5_PASSWORD` – password associated with the login
+- `MT5_SERVER` – name of the MT5 trading server
+
+These variables are read at runtime and are required for initialization.
+

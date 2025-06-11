@@ -15,6 +15,7 @@ from decimal import Decimal
 sys.stdout.reconfigure(encoding='utf-8')
 
 # === CONFIGURATION ===
+
 LOGIN = 204215535
 PASSWORD = "Mgi@2005"
 SERVER = "Exness-MT5Trial7"
