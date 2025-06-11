@@ -15,9 +15,9 @@ from decimal import Decimal
 sys.stdout.reconfigure(encoding='utf-8')
 
 # === CONFIGURATION ===
-LOGIN = 204215535
-PASSWORD = "Mgi@2005"
-SERVER = "Exness-MT5Trial7"
+LOGIN = int(os.getenv("MT5_LOGIN", "0"))
+PASSWORD = os.getenv("MT5_PASSWORD", "")
+SERVER = os.getenv("MT5_SERVER", "")
 SYMBOL = "XAUUSDm"
 TIMEFRAME = mt5.TIMEFRAME_M1
 
